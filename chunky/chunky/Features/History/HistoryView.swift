@@ -10,12 +10,19 @@ struct HistoryView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.shotStore) private var injectedStore
     @Query(sort: \Shot.timestamp, order: .reverse) private var shots: [Shot]
+    @Query(sort: \Club.order) private var clubs: [Club]
     @AppStorage("units") private var unitsRaw = Units.yards.rawValue
 
-    @State private var filter = ShotFilter()
+    @State private var filter: ShotFilter
     @State private var sortOrder = ShotSort.newest
     @State private var editMode: EditMode = .inactive
     @State private var selection = Set<UUID>()
+
+    // MARK: - Drill-down initialiser
+
+    init(initialFilter: ShotFilter = ShotFilter()) {
+        _filter = State(initialValue: initialFilter)
+    }
 
     private var units: Units { Units(rawValue: unitsRaw) ?? .yards }
     private var store: ShotStore { injectedStore ?? ShotStore(context: context) }
@@ -107,6 +114,38 @@ struct HistoryView: View {
                     }
                 }
             }
+            Section("Club") {
+                Button { filter.clubID = nil } label: {
+                    Label("All clubs",
+                          systemImage: filter.clubID == nil ? "checkmark" : "")
+                }
+                ForEach(clubs.filter { !$0.isArchived }) { club in
+                    Button { filter.clubID = club.id } label: {
+                        Label(club.name,
+                              systemImage: filter.clubID == club.id ? "checkmark" : "")
+                    }
+                }
+            }
+            Section("Date") {
+                Button { filter.dateRange = nil } label: {
+                    Label("All time",
+                          systemImage: filter.dateRange == nil ? "checkmark" : "")
+                }
+                Button {
+                    let start = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+                    filter.dateRange = start ... Date()
+                } label: {
+                    Label("Last 7 days",
+                          systemImage: activeDatePreset == 7 ? "checkmark" : "")
+                }
+                Button {
+                    let start = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+                    filter.dateRange = start ... Date()
+                } label: {
+                    Label("Last 30 days",
+                          systemImage: activeDatePreset == 30 ? "checkmark" : "")
+                }
+            }
             Section("Filter") {
                 Toggle("Show excluded", isOn: $filter.includeExcluded)
                 Button { filter.confidence = nil } label: {
@@ -129,7 +168,21 @@ struct HistoryView: View {
     }
 
     private var filterIsActive: Bool {
-        filter.confidence != nil || !filter.includeExcluded
+        filter.clubID != nil || filter.dateRange != nil
+            || filter.confidence != nil || !filter.includeExcluded
+    }
+
+    /// Returns the number-of-days preset currently reflected by `filter.dateRange`,
+    /// or 0 for "All time" (nil), or -1 for a custom range.
+    private var activeDatePreset: Int {
+        guard let range = filter.dateRange else { return 0 }
+        let days = Calendar.current.dateComponents(
+            [.day], from: range.lowerBound, to: range.upperBound).day ?? 0
+        switch days {
+        case 0...7:  return 7
+        case 8...30: return 30
+        default:     return -1
+        }
     }
 
     // MARK: - Bulk action bar (edit mode, non-empty selection)
@@ -183,10 +236,11 @@ private struct ShotRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Confidence dot
+            // Confidence dot — dimmed when excluded
             Circle()
                 .fill(Theme.confidenceColor(record.confidence))
                 .frame(width: 8, height: 8)
+                .opacity(record.isExcludedFromAverages ? 0.5 : 1.0)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(record.clubName)
@@ -196,16 +250,18 @@ private struct ShotRow: View {
                     .font(Theme.eyebrow)
                     .foregroundStyle(Theme.mist)
             }
+            .opacity(record.isExcludedFromAverages ? 0.5 : 1.0)
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                // Tabular carry value in current units
+                // Tabular carry value in current units — dimmed when excluded
                 Text(units.formattedCarry(fromMeters: record.carryMeters))
                     .font(Theme.number(17))
                     .foregroundStyle(Theme.chalk)
                     .monospacedDigit()
-                // Flag marker on excluded shots
+                    .opacity(record.isExcludedFromAverages ? 0.5 : 1.0)
+                // Flag marker stays full-opacity so excluded reads crisply
                 if record.isExcludedFromAverages {
                     Image(systemName: "flag.fill")
                         .font(.caption)
@@ -213,8 +269,6 @@ private struct ShotRow: View {
                 }
             }
         }
-        // Dim excluded rows
-        .opacity(record.isExcludedFromAverages ? 0.5 : 1.0)
     }
 }
 
