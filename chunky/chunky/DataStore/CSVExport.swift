@@ -2,6 +2,8 @@
 import Foundation
 
 nonisolated enum CSVExport {
+    nonisolated(unsafe) private static let isoFormatter = ISO8601DateFormatter()
+
     private static func field(_ s: String) -> String {
         (s.contains(",") || s.contains("\"") || s.contains("\n"))
             ? "\"\(s.replacingOccurrences(of: "\"", with: "\"\""))\""
@@ -14,7 +16,7 @@ nonisolated enum CSVExport {
         var lines = ["timestamp,club,carry_\(u),ball_speed_mph,launch_deg,spin_rpm,spin_source,confidence,excluded"]
         for r in records {
             let cols = [
-                ISO8601DateFormatter().string(from: r.timestamp),
+                isoFormatter.string(from: r.timestamp),
                 field(r.clubName),
                 num(units.carry(fromMeters: r.carryMeters)),
                 num(Conversions.msToMPH(r.ballSpeedMS)),
