@@ -10,7 +10,10 @@ final class ShotResultTypesTests: XCTestCase {
 
     func testEnumRawValues() {
         XCTAssertEqual(SpinSource.modeled.rawValue, "modeled")
+        XCTAssertEqual(SpinSource.measured.rawValue, "measured")
         XCTAssertEqual(ConfidenceLevel.high.rawValue, "high")
+        XCTAssertEqual(ConfidenceLevel.medium.rawValue, "medium")
+        XCTAssertEqual(ConfidenceLevel.low.rawValue, "low")
     }
 
     func testShotResultConvenienceConversions() {

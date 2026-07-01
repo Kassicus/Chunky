@@ -18,6 +18,7 @@ final class LinearFitTests: XCTestCase {
         let y = [2.0, 5.2, 7.8, 11.1] // near y=3x+2 with noise
         let r = LinearFit.fit(x: x, y: y)!
         XCTAssertEqual(r.slope, 3, accuracy: 0.2)
+        XCTAssertEqual(r.intercept, 2, accuracy: 0.5)
         XCTAssertGreaterThan(r.rmsResidual, 0)
     }
 

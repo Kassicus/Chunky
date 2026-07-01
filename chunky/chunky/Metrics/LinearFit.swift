@@ -1,5 +1,4 @@
 // chunky/chunky/Metrics/LinearFit.swift
-import Foundation
 
 /// Ordinary least-squares fit of y vs x (plain Swift, no Accelerate).
 nonisolated enum LinearFit {

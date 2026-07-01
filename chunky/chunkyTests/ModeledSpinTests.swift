@@ -30,6 +30,7 @@ final class ModeledSpinTests: XCTestCase {
         ]
         """.data(using: .utf8)!
         let table = try ModeledSpinTable(data: json)
+        XCTAssertEqual(table.spinRPM(forClub: "Driver"), 2600)
         XCTAssertEqual(table.spinRPM(forClub: "7-Iron"), 6500)
         XCTAssertNil(table.spinRPM(forClub: "Driver-X"))
     }

@@ -55,6 +55,18 @@ final class MetricsLaunchTests: XCTestCase {
 
     func testTooShortTrackReturnsNil() {
         let cal = CalibrationScale(pixelsPerMeter: 100, imageUpUnit: Vec2(0, 1))
+        XCTAssertNil(Metrics.measureLaunch(track: [], calibration: cal))
         XCTAssertNil(Metrics.measureLaunch(track: [TrackPoint(timeSeconds: 0, pixel: .zero)], calibration: cal))
+    }
+
+    func testDegenerateCalibrationReturnsNil() {
+        let cal = CalibrationScale(pixelsPerMeter: 100, imageUpUnit: Vec2(0, 1))
+        let track = syntheticTrack(v0: 70, angleDeg: 14, calibration: cal)
+        // Non-positive scale -> nil (would otherwise emit inf/NaN).
+        XCTAssertNil(Metrics.measureLaunch(track: track,
+            calibration: CalibrationScale(pixelsPerMeter: 0, imageUpUnit: Vec2(0, 1))))
+        // Zero up-vector normalizes to .zero -> nil (would otherwise emit v0=0).
+        XCTAssertNil(Metrics.measureLaunch(track: track,
+            calibration: CalibrationScale(pixelsPerMeter: 100, imageUpUnit: Vec2(0, 0))))
     }
 }

@@ -26,8 +26,12 @@ nonisolated struct MeasuredSpin: Equatable {
     }
 }
 
-/// Computed per-shot result (value type; distinct from the SwiftData `Shot` model
-/// in Plan 3). Carries raw fit inputs for later re-computation.
+/// Computed per-shot result (value type; distinct from the SwiftData `Shot`
+/// model in Plan 3). Holds the metrics, confidence, and fit-quality summaries
+/// (`fitRmsResidualMeters`, `usedFrameCount`). The raw track needed to
+/// re-compute carry later (spec §9/§10) is NOT stored here — the caller/DataStore
+/// persists it, since it already holds the original `track`/`calibration`/`atmosphere`
+/// inputs it passed to `Metrics.computeShot`.
 nonisolated struct ShotResult: Equatable {
     let ballSpeedMS: Double
     let launchAngleDeg: Double

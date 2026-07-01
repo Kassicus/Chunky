@@ -22,8 +22,10 @@ nonisolated enum Metrics {
                               calibration: CalibrationScale,
                               maxFitFrames: Int = 8) -> LaunchMeasurement? {
         guard track.count >= 2 else { return nil }
+        guard maxFitFrames >= 2 else { return nil }
+        guard calibration.pixelsPerMeter > 0, calibration.imageUpUnit != .zero else { return nil }
         let sorted = track.sorted { $0.timeSeconds < $1.timeSeconds }
-        let count = max(2, min(maxFitFrames, sorted.count))
+        let count = min(maxFitFrames, sorted.count)
         let window = Array(sorted.prefix(count))
 
         let up = calibration.imageUpUnit

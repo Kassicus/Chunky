@@ -42,6 +42,7 @@ final class MetricsShotTests: XCTestCase {
                                     modeledSpinRPM: 2600, measuredSpin: measured)!
         XCTAssertEqual(r.spinSource, .modeled)
         XCTAssertEqual(r.spinRPM, 2600, accuracy: 1e-9)
+        XCTAssertEqual(r.spinAxisTiltDeg, 0, accuracy: 1e-12)
     }
 
     func testCarryMatchesDirectBallisticsCall() {
