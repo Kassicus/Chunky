@@ -10,10 +10,10 @@ nonisolated enum AirDensity {
     static let gravity = 9.80665
     static let molarMassDryAir = 0.0289644          // kg/mol
     static let universalGasConstant = 8.31446       // J/(mol·K)
-    static let gasConstantDryAir = 287.058          // J/(kg·K)
+    static let gasConstantDryAir = 287.058          // J/(kg·K) — standard specific gas constant for dry air (≈ universalGasConstant/molarMassDryAir = 287.054; tabulated value used)
     static let gasConstantWaterVapor = 461.495      // J/(kg·K)
 
-    /// ISA tropospheric pressure (Pa) at altitude (m).
+    /// ISA tropospheric pressure (Pa) at altitude (m). Valid below ~11,000 m (troposphere).
     static func pressure(altitudeM: Double) -> Double {
         let exponent = gravity * molarMassDryAir / (universalGasConstant * lapseRateKPerM)
         let base = 1.0 - (lapseRateKPerM * altitudeM) / seaLevelTempK

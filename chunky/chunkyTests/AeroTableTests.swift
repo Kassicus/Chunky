@@ -43,6 +43,7 @@ final class AeroTableTests: XCTestCase {
         """.data(using: .utf8)!
         let decoded = try AeroTable(data: json)
         XCTAssertEqual(decoded.coefficients(spinRatio: 0.1).cl, 0.10, accuracy: 1e-12)
+        XCTAssertEqual(decoded.coefficients(spinRatio: 0.1).cd, 0.25, accuracy: 1e-12)
     }
 
     func testStandardTableIsMonotonicNonDecreasing() {
@@ -53,5 +54,14 @@ final class AeroTableTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(e[i].cd, e[i - 1].cd)
             XCTAssertGreaterThanOrEqual(e[i].cl, e[i - 1].cl)
         }
+    }
+
+    func testBundledJSONMatchesStandardTable() throws {
+        guard let url = Bundle.main.url(forResource: "aero_tables", withExtension: "json") else {
+            XCTFail("aero_tables.json not found in app bundle")
+            return
+        }
+        let loaded = try AeroTable(data: Data(contentsOf: url))
+        XCTAssertEqual(loaded.entries, AeroTable.standard.entries)
     }
 }

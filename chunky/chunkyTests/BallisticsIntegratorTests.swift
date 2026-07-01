@@ -46,4 +46,21 @@ final class BallisticsIntegratorTests: XCTestCase {
         let fine = Ballistics.integrate(launch: launch, airDensityKgM3: 1.225, dt: 0.0005)
         XCTAssertEqual(coarse.carryMeters, fine.carryMeters, accuracy: 0.1)
     }
+
+    func testDragShortensCarryNoSpin() {
+        // Zero spin → no Magnus lift (Cl=0 at S=0), so air adds only drag.
+        // This isolates drag, which the deleted testDragShortensCarry conflated with lift.
+        let launch = LaunchConditions(speedMS: 60, launchAngleDeg: 15, spinRPM: 0)
+        let vacuum = Ballistics.integrate(launch: launch, airDensityKgM3: 0)
+        let withAir = Ballistics.integrate(launch: launch, airDensityKgM3: 1.225)
+        XCTAssertLessThan(withAir.carryMeters, vacuum.carryMeters)
+    }
+
+    func testNormalShotReportsLanded() {
+        let traj = Ballistics.integrate(
+            launch: LaunchConditions(speedMS: 70, launchAngleDeg: 12, spinRPM: 2600),
+            airDensityKgM3: 1.225
+        )
+        XCTAssertTrue(traj.landed)
+    }
 }

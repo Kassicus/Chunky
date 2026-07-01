@@ -3,9 +3,9 @@
 // World frame: +x downrange (toward target), +y up, +z to the right.
 
 nonisolated struct Vec3: Equatable {
-    var x: Double
-    var y: Double
-    var z: Double
+    let x: Double
+    let y: Double
+    let z: Double
 
     init(_ x: Double, _ y: Double, _ z: Double) {
         self.x = x

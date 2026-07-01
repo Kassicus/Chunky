@@ -24,6 +24,8 @@ nonisolated struct AeroTable {
 
     func coefficients(spinRatio S: Double) -> (cd: Double, cl: Double) {
         guard let first = entries.first, let last = entries.last else {
+            // Only reachable if a caller builds an empty table; `.standard` is never
+            // empty. Return a neutral low-spin drag with no lift as a safe default.
             return (0.25, 0.0)
         }
         if S <= first.spinRatio { return (first.cd, first.cl) }

@@ -54,6 +54,7 @@ nonisolated enum Ballistics {
 
         while t < maxTime {
             // RK4 over state (position, velocity); acceleration depends only on velocity.
+            // k1 position-derivative is the current velocity (acceleration depends only on velocity)
             let a1 = acceleration(velocity)
             let v2 = velocity + (dt / 2) * a1
             let a2 = acceleration(v2)
@@ -79,12 +80,13 @@ nonisolated enum Ballistics {
                     carryMeters: carry,
                     flightTimeS: t - dt + frac * dt,
                     apexMeters: apex,
-                    points: points
+                    points: points,
+                    landed: true
                 )
             }
         }
 
         let carry = (position.x * position.x + position.z * position.z).squareRoot()
-        return Trajectory(carryMeters: carry, flightTimeS: t, apexMeters: apex, points: points)
+        return Trajectory(carryMeters: carry, flightTimeS: t, apexMeters: apex, points: points, landed: false)
     }
 }
