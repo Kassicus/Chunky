@@ -81,7 +81,9 @@ final class ImpactClipWriter: Sendable {
         }
         writer.add(input)
 
-        writer.startWriting()
+        guard writer.startWriting() else {
+            throw ClipWriterError.writerSetupFailed(writer.error?.localizedDescription ?? "startWriting() returned false")
+        }
         writer.startSession(atSourceTime: .zero)
 
         // ── Append frames ──────────────────────────────────────────────────────
@@ -122,7 +124,7 @@ final class ImpactClipWriter: Sendable {
         let docs = FileManager.default.urls(
             for: .documentDirectory,
             in: .userDomainMask
-        )[0]
+        ).first ?? FileManager.default.temporaryDirectory
         return docs.appendingPathComponent("clip_\(UUID().uuidString).mov")
     }
 }
