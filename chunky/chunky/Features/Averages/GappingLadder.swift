@@ -10,38 +10,40 @@ struct GappingLadder: View {
     let rungs: [(clubName: String, carryMeters: Double)]
     let units: Units
 
-    private static let rungHeight: CGFloat = 30
-
     private var maxCarry: Double { rungs.first?.carryMeters ?? 1 }
 
     var body: some View {
-        GeometryReader { geo in
-            let availableWidth = geo.size.width
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(Array(rungs.enumerated()), id: \.offset) { idx, rung in
-                    let isLongest = idx == 0
-                    let fraction = rung.carryMeters / max(maxCarry, 1)
-                    let barWidth = availableWidth * CGFloat(fraction)
+        // VStack (not GeometryReader) as the outer container so height is natural.
+        // Each bar gets its own GeometryReader clamped to the bar's stroke height,
+        // giving the available width without inflating vertical space.
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(rungs.enumerated()), id: \.element.clubName) { idx, rung in
+                let isLongest = idx == 0
+                let fraction = CGFloat(rung.carryMeters / max(maxCarry, 1))
+                let barHeight: CGFloat = isLongest ? 3 : 1
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 4) {
-                            Text(rung.clubName)
-                                .font(Theme.eyebrow)
-                                .kerning(0.8)
-                                .foregroundStyle(isLongest ? Theme.optic : Theme.mist)
-                            Spacer()
-                            Text(units.formattedCarry(fromMeters: rung.carryMeters))
-                                .font(Theme.number(12))
-                                .foregroundStyle(isLongest ? Theme.optic : Theme.chalk)
-                        }
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text(rung.clubName)
+                            .font(Theme.eyebrow)
+                            .kerning(0.8)
+                            .foregroundStyle(isLongest ? Theme.optic : Theme.mist)
+                        Spacer()
+                        Text(units.formattedCarry(fromMeters: rung.carryMeters))
+                            .font(Theme.number(12))
+                            .foregroundStyle(isLongest ? Theme.optic : Theme.chalk)
+                    }
+                    // GeometryReader is constrained to the bar's stroke height so
+                    // it doesn't add unwanted vertical space; width drives bar length.
+                    GeometryReader { geo in
                         Rectangle()
                             .fill(isLongest ? Theme.optic : Theme.turfLine)
-                            .frame(width: barWidth, height: isLongest ? 3 : 1)
+                            .frame(width: geo.size.width * fraction, height: barHeight)
                     }
+                    .frame(height: barHeight)
                 }
             }
         }
-        .frame(height: CGFloat(max(rungs.count, 1)) * Self.rungHeight)
     }
 }
 

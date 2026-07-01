@@ -1,6 +1,21 @@
 // chunky/chunky/Features/Averages/AveragesView.swift
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
+
+// MARK: - Transferable CSV wrapper
+
+/// Wraps the club-averages CSV string so ShareLink presents a real .csv file
+/// (recognised by Numbers, Excel, Files) instead of pasting raw text.
+private struct ClubAveragesCSV: Transferable {
+    let text: String
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .commaSeparatedText) { csv in
+            Data(csv.text.utf8)
+        }
+        .suggestedFileName("ClubAverages.csv")
+    }
+}
 
 struct AveragesView: View {
     @Environment(\.modelContext) private var context
@@ -49,13 +64,13 @@ struct AveragesView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(
-                    item: csvExport,
-                    subject: Text("Club averages"),
-                    message: Text("Exported from Chunky")
+                    item: ClubAveragesCSV(text: csvExport),
+                    preview: SharePreview("Club averages (CSV)")
                 ) {
                     Label("Share CSV", systemImage: "square.and.arrow.up")
                 }
                 .tint(Theme.chalk)
+                .disabled(rows.isEmpty)
             }
         }
     }
@@ -95,12 +110,17 @@ struct AveragesView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
 
-                // Per-club stat cards
+                // Per-club stat cards — each taps into the club's filtered shot history
                 VStack(spacing: 12) {
                     ForEach(rows, id: \.club.id) { row in
-                        ClubAverageCard(clubName: row.club.name,
-                                        aggregates: row.aggregates,
-                                        units: units)
+                        NavigationLink {
+                            HistoryView(initialFilter: ShotFilter(clubID: row.club.id))
+                        } label: {
+                            ClubAverageCard(clubName: row.club.name,
+                                            aggregates: row.aggregates,
+                                            units: units)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 20)
