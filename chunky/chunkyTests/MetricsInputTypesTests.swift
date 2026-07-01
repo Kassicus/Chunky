@@ -17,14 +17,14 @@ final class MetricsInputTypesTests: XCTestCase {
         XCTAssertEqual(cal.imageUpUnit.dot(cal.imageHorizontalUnit), 0, accuracy: 1e-12)
     }
 
-    func testEnvironmentDefaultsToSeaLevelStandard() {
-        let env = Environment()
+    func testAtmosphereDefaultsToSeaLevelStandard() {
+        let env = Atmosphere()
         XCTAssertEqual(env.airDensityKgM3, 1.225, accuracy: 0.001)
     }
 
-    func testEnvironmentAltitudeThinsAir() {
-        let sea = Environment(temperatureC: 15, altitudeM: 0)
-        let denver = Environment(temperatureC: 15, altitudeM: 1609)
+    func testAtmosphereAltitudeThinsAir() {
+        let sea = Atmosphere(temperatureC: 15, altitudeM: 0)
+        let denver = Atmosphere(temperatureC: 15, altitudeM: 1609)
         XCTAssertLessThan(denver.airDensityKgM3, sea.airDensityKgM3)
     }
 }

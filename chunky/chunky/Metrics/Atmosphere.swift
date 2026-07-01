@@ -1,8 +1,8 @@
-// chunky/chunky/Metrics/Environment.swift
+// chunky/chunky/Metrics/Atmosphere.swift
 import Foundation
 
 /// Atmospheric inputs for the ballistics air-density term.
-nonisolated struct Environment {
+nonisolated struct Atmosphere {
     let temperatureC: Double
     let altitudeM: Double
     let relativeHumidity: Double
