@@ -89,9 +89,11 @@ private final class FrameForwarder: FrameReceiver, @unchecked Sendable {
 /// (NSLock-protected) without any main-actor hop, keeping the capture queue
 /// non-blocking.  Impact callbacks from `AudioImpactMonitor` are dispatched by
 /// that class to `DispatchQueue.main`; the coordinator bridges back to
-/// `@MainActor` via `MainActor.assumeIsolated`.  Clip writing is dispatched to
-/// a `Task.detached` with `.utility` priority so it runs on the cooperative
-/// thread pool — never on the capture queue.
+/// `@MainActor` via `MainActor.assumeIsolated`.  Clip writing is dispatched via
+/// an attached `Task { @MainActor in }` (Phase 0 workaround because
+/// `[Timestamped<CVPixelBuffer>]` is non-Sendable; see handleImpact).
+/// AVAssetWriter encodes on its own threads, so the capture queue is never
+/// blocked.  Phase 1: revisit with a Sendable frame payload + Task.detached.
 ///
 /// ## Motion-confirmation seam (Phase 0 → Plan 5/6)
 ///
@@ -239,6 +241,7 @@ final class CaptureCoordinator: ObservableObject {
 
     /// Called on the main actor when the audio monitor fires a transient.
     private func handleImpact(at impactTime: Double) {
+        guard isArmed else { return }
 
         // ── Motion-confirmation gate ──────────────────────────────────────────
         // Phase 0: departureProvider == nil → confirm on audio alone.
