@@ -1,0 +1,8 @@
+[
+  {"club": "Driver", "baseRPM": 2600},
+  {"club": "3-Wood", "baseRPM": 3400},
+  {"club": "5-Iron", "baseRPM": 5000},
+  {"club": "7-Iron", "baseRPM": 6500},
+  {"club": "9-Iron", "baseRPM": 8000},
+  {"club": "PW", "baseRPM": 9000}
+]
