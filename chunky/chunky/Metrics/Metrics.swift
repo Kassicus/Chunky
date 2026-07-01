@@ -58,4 +58,76 @@ nonisolated enum Metrics {
             usedFrameCount: window.count
         )
     }
+
+    /// Overall confidence from spin source + tracking quality (frame count and
+    /// linear-fit tightness).
+    static func confidenceLevel(spinSource: SpinSource,
+                                frameCount: Int,
+                                fitRmsResidualMeters: Double) -> ConfidenceLevel {
+        let goodTrack = frameCount >= 5 && fitRmsResidualMeters <= 0.02
+        let okTrack   = frameCount >= 3 && fitRmsResidualMeters <= 0.05
+        if !okTrack { return .low }
+        switch spinSource {
+        case .measured: return goodTrack ? .high : .medium
+        case .modeled:  return goodTrack ? .medium : .low
+        }
+    }
+
+    /// Full pipeline: track + calibration → launch conditions → spin selection →
+    /// carry (via Ballistics) → ShotResult + confidence. Returns nil if the launch
+    /// cannot be measured.
+    static func computeShot(track: [TrackPoint],
+                            calibration: CalibrationScale,
+                            atmosphere: Atmosphere,
+                            modeledSpinRPM: Double,
+                            measuredSpin: MeasuredSpin? = nil,
+                            measuredSpinConfidenceThreshold: Double = 0.5,
+                            aero: AeroTable = .standard,
+                            maxFitFrames: Int = 8) -> ShotResult? {
+        guard let launch = measureLaunch(track: track,
+                                         calibration: calibration,
+                                         maxFitFrames: maxFitFrames) else { return nil }
+
+        let spinRPM: Double
+        let spinSource: SpinSource
+        let axisTiltDeg: Double
+        if let measured = measuredSpin,
+           measured.confidence >= measuredSpinConfidenceThreshold {
+            spinRPM      = measured.rpm
+            spinSource   = .measured
+            axisTiltDeg  = measured.axisTiltDeg
+        } else {
+            spinRPM      = modeledSpinRPM
+            spinSource   = .modeled
+            axisTiltDeg  = 0
+        }
+
+        let conditions = LaunchConditions(
+            speedMS:         launch.ballSpeedMS,
+            launchAngleDeg:  launch.launchAngleDeg,
+            azimuthDeg:      launch.azimuthDeg,
+            spinRPM:         spinRPM,
+            spinAxisTiltDeg: axisTiltDeg
+        )
+        let trajectory = Ballistics.integrate(launch: conditions,
+                                              airDensityKgM3: atmosphere.airDensityKgM3,
+                                              aero: aero)
+
+        let confidence = confidenceLevel(spinSource: spinSource,
+                                         frameCount: launch.usedFrameCount,
+                                         fitRmsResidualMeters: launch.fitRmsResidualMeters)
+
+        return ShotResult(
+            ballSpeedMS:          launch.ballSpeedMS,
+            launchAngleDeg:       launch.launchAngleDeg,
+            azimuthDeg:           launch.azimuthDeg,
+            spinRPM:              spinRPM,
+            spinSource:           spinSource,
+            spinAxisTiltDeg:      axisTiltDeg,
+            carryMeters:          trajectory.carryMeters,
+            confidence:           confidence,
+            fitRmsResidualMeters: launch.fitRmsResidualMeters,
+            usedFrameCount:       launch.usedFrameCount
+        )
+    }
 }
