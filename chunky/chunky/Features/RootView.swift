@@ -3,6 +3,8 @@ import SwiftUI
 import SwiftData
 
 struct RootView: View {
+    @Environment(\.modelContext) private var modelContext
+
     var body: some View {
         TabView {
             NavigationStack { AveragesView() }
@@ -12,6 +14,7 @@ struct RootView: View {
             NavigationStack { ClubsView() }
                 .tabItem { Label("Clubs", systemImage: "bag.fill") }
         }
+        .environment(\.shotStore, ShotStore(context: modelContext))
         .tint(Theme.optic)
         .background(Theme.rangeDusk)
     }

@@ -4,14 +4,15 @@ import SwiftData
 
 struct AveragesView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.shotStore) private var injectedStore
     @Query(sort: \Club.order) private var clubs: [Club]
     @AppStorage("units") private var unitsRaw = Units.yards.rawValue
 
     private var units: Units { Units(rawValue: unitsRaw) ?? .yards }
-    private var store: ShotStore { ShotStore(context: context) }
+    private var store: ShotStore { injectedStore ?? ShotStore(context: context) }
 
     /// Non-archived clubs with ≥1 non-excluded shot, sorted by mean carry descending.
-    private var rows: [(club: Club, aggregates: ClubAggregates)] {
+    private func computeRows() -> [(club: Club, aggregates: ClubAggregates)] {
         clubs
             .filter { !$0.isArchived }
             .compactMap { club -> (Club, ClubAggregates)? in
@@ -22,21 +23,18 @@ struct AveragesView: View {
             .sorted { $0.1.meanCarryMeters > $1.1.meanCarryMeters }
     }
 
-    private var ladderRungs: [(clubName: String, carryMeters: Double)] {
-        rows.map { ($0.club.name, $0.aggregates.meanCarryMeters) }
-    }
-
-    private var csvExport: String {
-        CSVExport.clubAverages(rows.map { ($0.club.name, $0.aggregates) }, units: units)
-    }
-
     var body: some View {
-        ZStack {
+        // Memoize rows once per render pass — used by ladder, cards, and CSV export.
+        let rows = computeRows()
+        let ladderRungs = rows.map { (clubName: $0.club.name, carryMeters: $0.aggregates.meanCarryMeters) }
+        let csvExport = CSVExport.clubAverages(rows.map { ($0.club.name, $0.aggregates) }, units: units)
+
+        return ZStack {
             Theme.rangeDusk.ignoresSafeArea()
             if rows.isEmpty {
                 emptyState
             } else {
-                dashboardContent
+                dashboardContent(rows: rows, ladderRungs: ladderRungs, csvExport: csvExport)
             }
         }
         .navigationTitle("Averages")
@@ -70,7 +68,7 @@ struct AveragesView: View {
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(Theme.mist)
             Text("No shots yet. Your yardages will show up here as you log them.")
-                .font(Theme.number(17))
+                .font(Theme.body)
                 .foregroundStyle(Theme.mist)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
@@ -79,7 +77,11 @@ struct AveragesView: View {
 
     // MARK: - Dashboard
 
-    private var dashboardContent: some View {
+    private func dashboardContent(
+        rows: [(club: Club, aggregates: ClubAggregates)],
+        ladderRungs: [(clubName: String, carryMeters: Double)],
+        csvExport: String
+    ) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 // Signature gapping ladder

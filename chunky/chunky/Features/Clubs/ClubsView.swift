@@ -4,17 +4,18 @@ import SwiftData
 
 struct ClubsView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.shotStore) private var injectedStore
     @Query(sort: \Club.order) private var clubs: [Club]
     @State private var showingAdd = false
 
-    private var store: ShotStore { ShotStore(context: context) }
+    private var store: ShotStore { injectedStore ?? ShotStore(context: context) }
     private var activeClubs: [Club] { clubs.filter { !$0.isArchived } }
 
     var body: some View {
         List {
             if activeClubs.isEmpty {
                 Text("No clubs yet. Add your first club to start logging shots.")
-                    .font(Theme.number(15)).foregroundStyle(Theme.mist)
+                    .font(Theme.body).foregroundStyle(Theme.mist)
                     .listRowBackground(Theme.turf)
             }
             ForEach(activeClubs) { club in

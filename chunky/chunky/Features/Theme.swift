@@ -29,6 +29,7 @@ enum Theme {
     static func display(_ size: CGFloat) -> Font { .system(size: size, weight: .bold, design: .rounded) }
     static func number(_ size: CGFloat) -> Font { .system(size: size, weight: .semibold).monospacedDigit() }
     static let eyebrow = Font.system(.caption, design: .rounded).weight(.semibold)
+    static let body = Font.system(.body, design: .rounded)
 }
 
 #Preview {

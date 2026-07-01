@@ -8,6 +8,7 @@ extension ShotSort: Hashable {}
 
 struct HistoryView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.shotStore) private var injectedStore
     @Query(sort: \Shot.timestamp, order: .reverse) private var shots: [Shot]
     @AppStorage("units") private var unitsRaw = Units.yards.rawValue
 
@@ -17,21 +18,19 @@ struct HistoryView: View {
     @State private var selection = Set<UUID>()
 
     private var units: Units { Units(rawValue: unitsRaw) ?? .yards }
-    private var store: ShotStore { ShotStore(context: context) }
-
-    // Required wiring: project shots → records, then filter + sort.
-    private var displayedRecords: [ShotRecord] {
-        let records = shots.map { store.record(from: $0) }
-        return sortOrder.sort(filter.apply(to: records))
-    }
+    private var store: ShotStore { injectedStore ?? ShotStore(context: context) }
 
     var body: some View {
-        ZStack {
+        // Memoize projections once per render pass.
+        let records = shots.map { store.record(from: $0) }
+        let displayed = sortOrder.sort(filter.apply(to: records))
+
+        return ZStack {
             Theme.rangeDusk.ignoresSafeArea()
             if shots.isEmpty {
                 emptyState
             } else {
-                shotList
+                shotList(displayed: displayed)
                     .safeAreaInset(edge: .bottom) {
                         if editMode.isEditing && !selection.isEmpty {
                             bulkActionBar
@@ -62,7 +61,7 @@ struct HistoryView: View {
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(Theme.mist)
             Text("No shots yet. Tag a club and take a swing.")
-                .font(Theme.number(17))
+                .font(Theme.body)
                 .foregroundStyle(Theme.mist)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
@@ -71,15 +70,15 @@ struct HistoryView: View {
 
     // MARK: - List
 
-    private var shotList: some View {
+    private func shotList(displayed: [ShotRecord]) -> some View {
         List(selection: $selection) {
-            if displayedRecords.isEmpty {
+            if displayed.isEmpty {
                 Text("No shots match your filters.")
-                    .font(Theme.number(15))
+                    .font(Theme.body)
                     .foregroundStyle(Theme.mist)
                     .listRowBackground(Theme.turf)
             }
-            ForEach(displayedRecords) { record in
+            ForEach(displayed) { record in
                 NavigationLink {
                     if let shot = shots.first(where: { $0.id == record.id }) {
                         ShotDetailView(shot: shot, store: store)
