@@ -13,6 +13,7 @@ struct RootView: View {
                 .tabItem { Label("Clubs", systemImage: "bag.fill") }
         }
         .tint(Theme.optic)
+        .background(Theme.rangeDusk)
     }
 }
 
