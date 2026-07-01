@@ -12,13 +12,20 @@ final class DesignPrimitivesTests: XCTestCase {
     }
 
     func testHexAcceptsNoHashAndAlpha() {
-        XCTAssertNotNil(HexColor.rgba("0C1E16"))
+        // Verify actual RGB values for a no-hash 6-digit hex
+        let c = HexColor.rgba("0C1E16")!
+        XCTAssertEqual(c.r, Double(0x0C) / 255.0, accuracy: 1e-9)
+        XCTAssertEqual(c.g, Double(0x1E) / 255.0, accuracy: 1e-9)
+        XCTAssertEqual(c.b, Double(0x16) / 255.0, accuracy: 1e-9)
+        XCTAssertEqual(c.a, 1.0, accuracy: 1e-9)
         XCTAssertEqual(HexColor.rgba("#000000FF")!.a, 1.0, accuracy: 1e-9)
     }
 
     func testHexRejectsMalformed() {
         XCTAssertNil(HexColor.rgba("#ZZZ"))
         XCTAssertNil(HexColor.rgba("12345"))
+        // Genuinely non-hex 6-char string — isolates the UInt64-parse guard
+        XCTAssertNil(HexColor.rgba("ZZZZZZ"), "non-hex 6-char string should fail UInt64 parse")
     }
 
     func testUnitsCarryConversionAndFormat() {

@@ -21,7 +21,7 @@ final class ShotStoreTests: XCTestCase {
     func testSaveShotAutoLinksClub() throws {
         let store = try makeStore()
         let club = store.addClub(name: "7-Iron", type: .iron, modeledSpinRPM: 6500)
-        let shot = store.saveShot(sampleResult(), to: club, session: nil, rawTrackJSON: "[]")
+        let shot = try store.saveShot(sampleResult(), to: club, session: nil, rawTrackJSON: "[]")
         XCTAssertEqual(shot.club?.name, "7-Iron")
         XCTAssertEqual(shot.rawTrackJSON, "[]")
         XCTAssertEqual(club.shots.count, 1)
@@ -30,8 +30,8 @@ final class ShotStoreTests: XCTestCase {
     func testExcludeAndDelete() throws {
         let store = try makeStore()
         let club = store.addClub(name: "7-Iron", type: .iron, modeledSpinRPM: 6500)
-        let s1 = store.saveShot(sampleResult(carry: 150), to: club, session: nil, rawTrackJSON: nil)
-        _ = store.saveShot(sampleResult(carry: 160), to: club, session: nil, rawTrackJSON: nil)
+        let s1 = try store.saveShot(sampleResult(carry: 150), to: club, session: nil, rawTrackJSON: nil)
+        _ = try store.saveShot(sampleResult(carry: 160), to: club, session: nil, rawTrackJSON: nil)
         store.setExcluded(s1, true)
         XCTAssertTrue(s1.isExcludedFromAverages)
         let recs = club.shots.map(store.record(from:))
@@ -43,7 +43,7 @@ final class ShotStoreTests: XCTestCase {
     func testRemoveClubSoftArchivesWhenItHasShots() throws {
         let store = try makeStore()
         let club = store.addClub(name: "7-Iron", type: .iron, modeledSpinRPM: 6500)
-        _ = store.saveShot(sampleResult(), to: club, session: nil, rawTrackJSON: nil)
+        _ = try store.saveShot(sampleResult(), to: club, session: nil, rawTrackJSON: nil)
         store.removeClub(club)
         XCTAssertTrue(club.isArchived)
         XCTAssertEqual(try store.context.fetch(FetchDescriptor<Club>()).count, 1) // still present

@@ -10,7 +10,10 @@ final class StatsTests: XCTestCase {
         // sample stddev of [2,4,4,4,5,5,7,9] = 2.138...
         XCTAssertEqual(Stats.standardDeviation([2,4,4,4,5,5,7,9])!, 2.13809, accuracy: 1e-4)
     }
-    func testStdDevNeedsTwo() { XCTAssertNil(Stats.standardDeviation([5])) }
+    func testStdDevNeedsTwo() {
+        XCTAssertNil(Stats.standardDeviation([5]))
+        XCTAssertNil(Stats.standardDeviation([]))
+    }
     func testMinMax() {
         let mm = Stats.minMax([3, -1, 7])!
         XCTAssertEqual(mm.min, -1, accuracy: 1e-12)

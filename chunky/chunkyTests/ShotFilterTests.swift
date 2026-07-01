@@ -34,5 +34,9 @@ final class ShotFilterTests: XCTestCase {
         let recs = [rec(150, 1, club: a), rec(170, 3, club: a), rec(160, 2, club: a)]
         XCTAssertEqual(ShotSort.longestCarry.sort(recs).map(\.carryMeters), [170, 160, 150])
         XCTAssertEqual(ShotSort.newest.sort(recs).first?.timestamp, Date(timeIntervalSince1970: 3))
+        XCTAssertEqual(ShotSort.oldest.sort(recs).first?.timestamp, Date(timeIntervalSince1970: 1),
+                       ".oldest should return earliest timestamp first")
+        XCTAssertEqual(ShotSort.shortestCarry.sort(recs).map(\.carryMeters), [150, 160, 170],
+                       ".shortestCarry should sort ascending by carry")
     }
 }
