@@ -42,14 +42,14 @@ nonisolated struct AeroTable {
     /// Default table (approximate published golf-ball wind-tunnel values, spec §3.2).
     /// This is the calibration surface validated by BallisticsReferenceCarryTests.
     static let standard = AeroTable(entries: [
-        Entry(spinRatio: 0.00, cd: 0.250, cl: 0.000),
-        Entry(spinRatio: 0.05, cd: 0.255, cl: 0.100),
-        Entry(spinRatio: 0.10, cd: 0.260, cl: 0.160),
-        Entry(spinRatio: 0.15, cd: 0.270, cl: 0.210),
-        Entry(spinRatio: 0.20, cd: 0.280, cl: 0.240),
-        Entry(spinRatio: 0.25, cd: 0.290, cl: 0.260),
-        Entry(spinRatio: 0.30, cd: 0.300, cl: 0.280),
-        Entry(spinRatio: 0.40, cd: 0.320, cl: 0.310),
-        Entry(spinRatio: 0.50, cd: 0.340, cl: 0.330),
+        Entry(spinRatio: 0.00, cd: 0.240, cl: 0.000),
+        Entry(spinRatio: 0.05, cd: 0.240, cl: 0.190),
+        Entry(spinRatio: 0.10, cd: 0.248, cl: 0.240),
+        Entry(spinRatio: 0.15, cd: 0.260, cl: 0.250),
+        Entry(spinRatio: 0.20, cd: 0.272, cl: 0.260),
+        Entry(spinRatio: 0.25, cd: 0.285, cl: 0.268),
+        Entry(spinRatio: 0.30, cd: 0.298, cl: 0.278),
+        Entry(spinRatio: 0.40, cd: 0.318, cl: 0.305),
+        Entry(spinRatio: 0.50, cd: 0.338, cl: 0.325),
     ])
 }
