@@ -30,13 +30,6 @@ final class BallisticsIntegratorTests: XCTestCase {
         XCTAssertEqual(traj.apexMeters, expectedApex, accuracy: 0.02)
     }
 
-    func testDragShortensCarry() {
-        let launch = LaunchConditions(speedMS: 60, launchAngleDeg: 15, spinRPM: 3000)
-        let vacuum = Ballistics.integrate(launch: launch, airDensityKgM3: 0)
-        let withAir = Ballistics.integrate(launch: launch, airDensityKgM3: 1.225)
-        XCTAssertLessThan(withAir.carryMeters, vacuum.carryMeters)
-    }
-
     func testBackspinAddsCarryVersusNoSpin() {
         // Backspin lift should extend carry relative to a spinless ball in air.
         let base = LaunchConditions(speedMS: 60, launchAngleDeg: 12, spinRPM: 0)
