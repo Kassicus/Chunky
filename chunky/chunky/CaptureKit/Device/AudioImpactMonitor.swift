@@ -75,7 +75,14 @@ final class AudioImpactMonitor: @unchecked Sendable {
             self.processTap(buffer: buffer, time: time)
         }
 
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            // Remove the tap so a subsequent start() attempt does not hit
+            // AVAudioEngine's "already tapped bus 0" assertion.
+            inputNode.removeTap(onBus: 0)
+            throw error
+        }
         isRunning = true
     }
 
@@ -102,6 +109,9 @@ final class AudioImpactMonitor: @unchecked Sendable {
         if time.isSampleTimeValid, time.sampleRate > 0 {
             t = Double(time.sampleTime) / time.sampleRate
         } else {
+            // CACurrentMediaTime() is host-clock based and not aligned to the
+            // engine's sample clock, so this fallback may introduce a
+            // time-domain discontinuity relative to sampleTime-derived timestamps.
             t = CACurrentMediaTime()
         }
 
