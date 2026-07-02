@@ -12,6 +12,15 @@ import CoreVideo
 nonisolated enum PixelBufferGray {
 
     static func grayImage(from pixelBuffer: CVPixelBuffer) -> GrayImage? {
+        // Skip (don't trap) a degenerate zero-dimension buffer: GrayImage's
+        // precondition would crash the caller, whereas callers already handle
+        // a nil return by skipping the frame. Real capture buffers are never
+        // zero-dimension; this is defensive.
+        guard CVPixelBufferGetWidth(pixelBuffer) > 0,
+              CVPixelBufferGetHeight(pixelBuffer) > 0 else {
+            return nil
+        }
+
         let format = CVPixelBufferGetPixelFormatType(pixelBuffer)
 
         switch format {

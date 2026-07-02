@@ -45,42 +45,45 @@ nonisolated struct VisionPipeline {
 
     /// Build a `departureProvider` closure for `CaptureCoordinator`.
     ///
-    /// The returned closure:
+    /// The returned closure, given the audio-transient time:
     /// 1. Pulls the current frame window via `recentFrames()`.
-    /// 2. Converts each buffer to a `GrayImage` (skips failures, preserving
-    ///    timestamps).
-    /// 3. Computes `ROIDifference.activity(previous:current:roi:)` between
+    /// 2. Keeps only frames at or after the transient (departure cannot precede
+    ///    impact; pre-impact tee-box activity — club/hands entering the ROI —
+    ///    must not register as a ball departure).
+    /// 3. Converts each remaining buffer to a `GrayImage` (skips failures,
+    ///    preserving timestamps).
+    /// 4. Computes `ROIDifference.activity(previous:current:roi:)` between
     ///    consecutive converted frames, producing a `[Timestamped<Double>]`
     ///    activity series (timestamp = the *current* frame's time).
-    /// 4. Returns `MotionDeparture(activityThreshold:).departureTime(activity:)`.
+    /// 5. Returns `MotionDeparture(activityThreshold:).departureTime(activity:)`.
     ///
-    /// Fewer than two convertible frames → nil (cannot compute a frame difference).
+    /// Fewer than two convertible post-transient frames → nil (cannot compute a
+    /// frame difference).
     ///
     /// - Parameters:
     ///   - recentFrames:      Supplies the frame window to analyze.  In Plan 6
-    ///                        this will read the coordinator's ring buffer;
-    ///                        temporal gating on the audio transient also lands
-    ///                        in Plan 6.
+    ///                        this will read the coordinator's ring buffer.
     ///   - roi:               The tee-box region of interest in image-plane
     ///                        coordinates (x→right, y→DOWN).
     ///   - activityThreshold: Activity level (0…1) above which ball departure is
     ///                        declared by `MotionDeparture`.
     ///
     /// - Returns: A closure `(Double) -> Double?`.  The `Double` input is the
-    ///   audio-transient time (seconds, host-time clock); it is passed through for
-    ///   future temporal gating (e.g. ignoring frames before the transient) but is
-    ///   not yet consumed — live ring-buffer wiring and temporal gating land in
-    ///   Plan 6.
+    ///   audio-transient time (seconds, host-time clock — the same domain as the
+    ///   frame PTS); frames before it are ignored so the returned departure time
+    ///   always satisfies `departure >= transient`, matching what
+    ///   `ImpactConfirmation` requires.  Live ring-buffer wiring lands in Plan 6.
     func makeDepartureProvider(
         recentFrames: @escaping () -> [Timestamped<CVPixelBuffer>],
         roi: (x: Int, y: Int, w: Int, h: Int),
         activityThreshold: Double
     ) -> (Double) -> Double? {
-        return { _ in
-            // Pull and convert frames, preserving timestamps for convertible buffers.
+        return { transientTime in
+            // Pull frames, drop any before the audio transient, and convert the
+            // rest — preserving timestamps for convertible buffers.
             let frames = recentFrames()
             var converted: [Timestamped<GrayImage>] = []
-            for frame in frames {
+            for frame in frames where frame.timeSeconds >= transientTime {
                 guard let gray = PixelBufferGray.grayImage(from: frame.value) else { continue }
                 converted.append(Timestamped(timeSeconds: frame.timeSeconds, value: gray))
             }
