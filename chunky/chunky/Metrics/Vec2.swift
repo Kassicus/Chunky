@@ -30,3 +30,5 @@ nonisolated struct Vec2: Equatable {
     /// from the calibrated "up" direction (they are orthogonal).
     var perpendicular: Vec2 { Vec2(y, -x) }
 }
+
+extension Vec2: Codable {}

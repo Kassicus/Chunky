@@ -41,4 +41,21 @@ nonisolated enum CalibrationMath {
             imageUpUnit: imageUpUnit(imagePlaneGravity: imagePlaneGravity)
         )
     }
+
+    /// Pixels-per-meter from two user-tapped points a known physical distance apart.
+    static func pixelsPerMeter(pointA: Vec2, pointB: Vec2, knownLengthMeters: Double) -> Double? {
+        guard knownLengthMeters > 0 else { return nil }
+        let d = (pointB - pointA).magnitude
+        guard d > 0 else { return nil }
+        return d / knownLengthMeters
+    }
+
+    /// Builds a `CalibrationScale` from two known-distance points plus gravity.
+    static func calibrationScale(pointA: Vec2, pointB: Vec2, knownLengthMeters: Double,
+                                 imagePlaneGravity: Vec2) -> CalibrationScale? {
+        guard let ppm = pixelsPerMeter(pointA: pointA, pointB: pointB, knownLengthMeters: knownLengthMeters)
+        else { return nil }
+        return CalibrationScale(pixelsPerMeter: ppm,
+                                imageUpUnit: imageUpUnit(imagePlaneGravity: imagePlaneGravity))
+    }
 }

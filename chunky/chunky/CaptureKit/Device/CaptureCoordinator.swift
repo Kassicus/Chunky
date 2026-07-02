@@ -138,8 +138,8 @@ final class CaptureCoordinator: ObservableObject {
 
     // MARK: - Private state
 
-    private let config: CaptureConfiguration
-    private let camera: CameraCaptureController
+    private var config: CaptureConfiguration
+    private var camera: CameraCaptureController
     private let audio: AudioImpactMonitor
     private let clipWriter = ImpactClipWriter()
 
@@ -238,6 +238,34 @@ final class CaptureCoordinator: ObservableObject {
         camera.onStatusChange = nil
         isArmed = false
         status = .idle
+    }
+
+    // MARK: - Live-screen integration
+
+    /// The `AVCaptureSession` for attaching an `AVCaptureVideoPreviewLayer`.
+    /// Available immediately (before `arm()`); begins delivering frames after arm.
+    var previewSession: AVCaptureSession { camera.session }
+
+    /// The lens currently configured.
+    var currentLens: CaptureConfiguration.Lens { config.lens }
+
+    /// Snapshot of the ring buffer (most recent frames, in order), for
+    /// motion-departure analysis. Thread-safe via the locked buffer.
+    func recentFrames() -> [Timestamped<CVPixelBuffer>] {
+        lockedBuffer.snapshot()
+    }
+
+    /// Switches the capture lens. Recreates the camera controller on the same
+    /// frame forwarder (fps/ring-buffer capacity unchanged), re-arming if the
+    /// session was running. `previewSession` changes — the preview view must
+    /// re-attach to the new session.
+    func setLens(_ lens: CaptureConfiguration.Lens) async throws {
+        guard config.lens != lens else { return }
+        let wasArmed = isArmed
+        if wasArmed { disarm() }
+        config.lens = lens
+        camera = CameraCaptureController(config: config, receiver: frameForwarder)
+        if wasArmed { try await arm() }
     }
 
     // MARK: - Private — impact handling

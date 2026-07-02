@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct chunkyApp: App {
+    @State private var appSettings = AppSettings()
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Club.self,
@@ -31,5 +33,6 @@ struct chunkyApp: App {
             RootView()
         }
         .modelContainer(sharedModelContainer)
+        .environment(appSettings)
     }
 }
