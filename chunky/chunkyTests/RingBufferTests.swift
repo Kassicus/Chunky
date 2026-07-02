@@ -25,5 +25,6 @@ final class RingBufferTests: XCTestCase {
         b.append(1); b.removeAll()
         XCTAssertEqual(b.count, 0)
         XCTAssertEqual(b.elements, [])
+        XCTAssertFalse(b.isFull)
     }
 }

@@ -190,13 +190,13 @@ final class CaptureCoordinator: ObservableObject {
 
         // Camera authorization
         guard await camera.requestAuthorization() else {
-            status = .unauthorized
+            status = .unauthorized(.camera)
             return
         }
 
         // Microphone authorization
         guard await audio.requestAuthorization() else {
-            status = .unauthorized
+            status = .unauthorized(.microphone)
             return
         }
 
@@ -234,6 +234,8 @@ final class CaptureCoordinator: ObservableObject {
         guard isArmed else { return }
         camera.stop()
         audio.stop()
+        audio.onImpact = { _ in }
+        camera.onStatusChange = nil
         isArmed = false
         status = .idle
     }

@@ -165,7 +165,7 @@ Saved clips are encoded by the device's hardware codec. At Phase 0, review wheth
 
 ### Motion-confirmation seam (Plan 5 hook)
 
-At Phase 0, the trigger is **audio-only**. Ball departure from the tee-box ROI (motion confirmation) is a deliberate Plan-5 seam — it is not wired at this phase. As a result, the refractory debounce relies entirely on the audio trigger's refractory period (default ~500 ms). Neighboring bay impact sounds or loud broadband noise may produce phantom triggers that would be suppressed by motion confirmation in Plan 5. If you observe phantom triggers that are not practice swings, note the acoustic condition; these are expected and tracked for Plan 5.
+At Phase 0, the trigger is **audio-only**. Ball departure from the tee-box ROI (motion confirmation) is a deliberate Plan-5 seam — it is not wired at this phase. As a result, the refractory debounce relies entirely on the audio trigger's refractory period (default 200 ms). Neighboring bay impact sounds or loud broadband noise may produce phantom triggers that would be suppressed by motion confirmation in Plan 5. If you observe phantom triggers that are not practice swings, note the acoustic condition; these are expected and tracked for Plan 5. Note: the ring buffer retains biplanar 420f frames over ~0.3 s (72 frames @ 240 fps).
 
 | Observation | Notes |
 |---|---|

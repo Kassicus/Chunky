@@ -91,6 +91,7 @@ final class ImpactClipWriter: Sendable {
         // ── Append frames ──────────────────────────────────────────────────────
         // PTS is the offset from the first captured frame (not wall-clock zero)
         // on a 600 Hz timescale (evenly divisible by 30, 60, 120, 240 fps).
+        var droppedCount = 0
         for frame in frames {
             let pts = CMTime(
                 seconds: frame.timeSeconds - firstTime,
@@ -102,7 +103,9 @@ final class ImpactClipWriter: Sendable {
                 await Task.yield()
             }
 
-            adaptor.append(frame.value, withPresentationTime: pts)
+            if !adaptor.append(frame.value, withPresentationTime: pts) {
+                droppedCount += 1
+            }
         }
 
         input.markAsFinished()
@@ -116,6 +119,10 @@ final class ImpactClipWriter: Sendable {
             throw ClipWriterError.writerFinishFailed(
                 writer.error?.localizedDescription ?? "Unknown AVAssetWriter failure"
             )
+        }
+
+        if droppedCount > 0 {
+            throw ClipWriterError.writerFinishFailed("\(droppedCount) frame(s) dropped during append")
         }
     }
 

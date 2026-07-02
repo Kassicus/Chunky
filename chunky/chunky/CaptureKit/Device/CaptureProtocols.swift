@@ -11,10 +11,12 @@ enum CaptureSetupError: Error, Equatable {
     case configurationFailed(String)
 }
 
+enum CaptureMediaKind: Sendable, Equatable { case camera, microphone }
+
 enum CaptureStatus: Sendable, Equatable {
     case idle
     case running
     case needsMoreLight
-    case unauthorized
+    case unauthorized(CaptureMediaKind)
     case failed(String)
 }

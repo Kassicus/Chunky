@@ -58,9 +58,6 @@ final class CameraCaptureController: NSObject, @unchecked Sendable {
             device = telephoto
         } else if let wide = discoverySession.devices.first(where: { $0.deviceType == .builtInWideAngleCamera }) {
             device = wide
-        } else if let any = discoverySession.devices.first {
-            // Unexpected but safe fallback: use whatever was found
-            device = any
         } else {
             throw CaptureSetupError.noCamera
         }
