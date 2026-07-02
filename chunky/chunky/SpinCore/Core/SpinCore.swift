@@ -15,7 +15,6 @@ nonisolated struct SpinCore {
 
     func measure(ballFrames: [Timestamped<GrayImage>], track: [TrackPoint],
                  modeledSpinRPM: Double) -> MeasuredSpin? {
-        guard !ballFrames.isEmpty else { return nil }
         var angles: [Timestamped<Double>] = []
         var strengths: [Double] = []
         for tp in track {
@@ -25,7 +24,13 @@ nonisolated struct SpinCore {
             let ox = Int(tp.pixel.x.rounded()) - half
             let oy = Int(tp.pixel.y.rounded()) - half
             guard let crop = frame.cropped(x: ox, y: oy, width: half * 2, height: half * 2) else { continue }
-            let center = Vec2(tp.pixel.x - Double(ox), tp.pixel.y - Double(oy))
+            // GrayImage.cropped clamps its origin to >= 0, so the crop's (0,0)
+            // maps to the CLAMPED source origin. Place the ball center in crop
+            // coordinates against that clamped origin, else the center is biased
+            // when the ball is near the top/left image edge (climbing iron/wedge
+            // shots) and every marking angle in those frames is corrupted.
+            let x0 = max(0, ox), y0 = max(0, oy)
+            let center = Vec2(tp.pixel.x - Double(x0), tp.pixel.y - Double(y0))
             guard let obs = estimator.markingAngle(in: crop, center: center, radiusPx: tp.radiusPx),
                   obs.strength >= minMarkingStrength else { continue }
             angles.append(Timestamped(timeSeconds: tp.timeSeconds, value: obs.angleRadians))

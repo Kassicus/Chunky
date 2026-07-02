@@ -41,6 +41,38 @@ final class SpinCoreTests: XCTestCase {
         XCTAssertEqual(spin!.axisTiltDeg, 0, accuracy: 1e-9) // single-camera → backspin-dominant
     }
 
+    /// Ball near the top-left corner so the crop origin clamps to 0 (ox,oy < 0).
+    /// Regression for the crop-center origin bias: the ball center must be mapped
+    /// against the CLAMPED origin, otherwise every marking angle is offset and the
+    /// recovered rpm/confidence degrade. The true rpm must still come through.
+    func testMeasuresRotatingMarkingNearTopLeftEdge() {
+        let size = 48
+        let cx = 14.0, cy = 14.0           // < crop half (round(16*1.15)=18) → ox,oy < 0 → clamp
+        let ballR = 16.0
+        let markOrbit = 7.0, markR = 4
+        let rpm = 3000.0, fps = 240.0
+        let radPerFrame = rpm * 2 * .pi / 60.0 / fps
+        var frames: [Timestamped<GrayImage>] = []
+        var track: [TrackPoint] = []
+        for i in 0..<8 {
+            let ang = Double(i) * radPerFrame
+            let mx = Int((cx + markOrbit * cos(ang)).rounded())
+            let my = Int((cy + markOrbit * sin(ang)).rounded())
+            var px = [UInt8](repeating: 255, count: size * size)
+            for y in 0..<size { for x in 0..<size {
+                let dx = x - mx, dy = y - my
+                if dx*dx + dy*dy <= markR*markR { px[y*size + x] = 0 }
+            }}
+            let t = 0.1 + Double(i)/fps
+            frames.append(Timestamped(timeSeconds: t, value: GrayImage(width: size, height: size, pixels: px)))
+            track.append(TrackPoint(timeSeconds: t, pixel: Vec2(cx, cy), radiusPx: ballR, confidence: 0.9))
+        }
+        let spin = SpinCore().measure(ballFrames: frames, track: track, modeledSpinRPM: 2600)
+        XCTAssertNotNil(spin)
+        XCTAssertEqual(spin!.rpm, 3000, accuracy: 300)
+        XCTAssertGreaterThan(spin!.confidence, 0.4)
+    }
+
     func testBlankBallYieldsNilOrZeroConfidence() {
         let c = 30.0
         let frames = (0..<8).map { i in
