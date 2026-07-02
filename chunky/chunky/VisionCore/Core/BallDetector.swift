@@ -15,8 +15,8 @@ nonisolated protocol BallDetector {
 ///    - `aspect  = min(bw, bh) / max(bw, bh)`       — 1 for a square bbox
 ///    - `fill    = pixelCount / (bw × bh)`           — a disk ≈ π/4 ≈ 0.785
 ///    - `confidence = aspect × (1 − min(1, |fill − π/4| / (π/4)))`
-/// 4. Return all blobs passing `minArea`, sorted by confidence descending.
-///    Callers filter on `confidence >= minCircularity` for high-quality candidates.
+/// 4. Filter blobs whose circularity score meets `minCircularity`, then return
+///    the surviving candidates sorted by confidence descending.
 nonisolated struct BlobBallDetector: BallDetector {
     var threshold: UInt8 = 180
     var minArea: Int = 6
@@ -35,6 +35,8 @@ nonisolated struct BlobBallDetector: BallDetector {
             let aspect = min(bw, bh) / max(bw, bh)
             let fill   = Double(blob.pixelCount) / (bw * bh)
             let confidence = aspect * (1.0 - min(1.0, abs(fill - expectedFill) / expectedFill))
+
+            guard confidence >= minCircularity else { continue }
 
             let radiusPx = (Double(blob.pixelCount) / Double.pi).squareRoot()
             candidates.append(BallCandidate(center: blob.centroid,
