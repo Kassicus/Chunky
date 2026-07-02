@@ -67,10 +67,12 @@ final class ImpactClipWriter: Sendable {
         input.expectsMediaDataInRealTime = false   // batch write; no live throttle
 
         // ── Pixel-buffer adaptor ───────────────────────────────────────────────
+        // Match the 420f biplanar format used by CameraCaptureController so the
+        // encoder receives native YCbCr data without an intermediate conversion.
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(
             assetWriterInput: input,
             sourcePixelBufferAttributes: [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange,
                 kCVPixelBufferWidthKey as String: width,
                 kCVPixelBufferHeightKey as String: height,
             ]

@@ -8,7 +8,7 @@ nonisolated struct CaptureConfiguration: Equatable, Sendable {
     var targetFPS: Double = 240
     var resolutionHeight: Int = 1080
     var shutterSeconds: Double = 1.0 / 2000
-    var ringBufferSeconds: Double = 0.5
+    var ringBufferSeconds: Double = 0.3   // covers preRoll 40 ms + postRoll 120 ms + latency margin
     var preRollSeconds: Double = 0.040
     var postRollSeconds: Double = 0.120
 

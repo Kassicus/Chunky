@@ -12,7 +12,7 @@ final class CaptureConfigurationTests: XCTestCase {
     }
 
     func testRingBufferCapacity() {
-        // 0.5 s * 240 fps = 120 frames
-        XCTAssertEqual(CaptureConfiguration.default.ringBufferCapacity, 120)
+        // 0.3 s * 240 fps = 72 frames (covers preRoll 40 ms + postRoll 120 ms + latency margin)
+        XCTAssertEqual(CaptureConfiguration.default.ringBufferCapacity, 72)
     }
 }

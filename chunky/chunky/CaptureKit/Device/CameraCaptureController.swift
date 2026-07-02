@@ -44,7 +44,7 @@ final class CameraCaptureController: NSObject, @unchecked Sendable {
     /// Configures and starts the capture session.
     /// Throws CaptureSetupError if the camera is unavailable, no suitable
     /// format exists, or session configuration fails.
-    func start() throws {
+    func start() async throws {
         // 1. Discover camera device -----------------------------------------
         let discoverySession = AVCaptureDevice.DiscoverySession(
             deviceTypes: [.builtInTelephotoCamera, .builtInWideAngleCamera],
@@ -105,21 +105,9 @@ final class CameraCaptureController: NSObject, @unchecked Sendable {
         device.activeVideoMinFrameDuration = frameDuration
         device.activeVideoMaxFrameDuration = frameDuration
 
-        // Custom short-shutter exposure: scale ISO from the current auto meter
-        let autoISO = Double(device.iso)
-        let autoDuration = device.exposureDuration.seconds
-        let rec = ExposureCalculator.recommend(
-            autoISO: autoISO,
-            autoDuration: autoDuration,
-            targetDuration: config.shutterSeconds,
-            minISO: Double(bestFormat.minISO),
-            maxISO: Double(bestFormat.maxISO)
-        )
-        device.setExposureModeCustom(
-            duration: CMTime(seconds: config.shutterSeconds, preferredTimescale: 1_000_000),
-            iso: Float(rec.iso),
-            completionHandler: nil
-        )
+        // Exposure is intentionally left in auto here so the AE meter can
+        // converge while the session warms up.  Custom exposure is applied
+        // below after a brief settling wait (see §5 "Meter ISO after AE settles").
 
         // Lock white balance and focus to prevent hunting during capture
         if device.isWhiteBalanceModeSupported(.locked) {
@@ -134,6 +122,14 @@ final class CameraCaptureController: NSObject, @unchecked Sendable {
         // 4. Build AVCaptureSession -------------------------------------------
         let newSession = AVCaptureSession()
         newSession.beginConfiguration()
+
+        // Honor the device's activeFormat; prevents the session from re-selecting
+        // a lower-fps default format when the input is added.
+        newSession.sessionPreset = .inputPriority
+
+        // Prevent the camera session from reconfiguring the app audio session
+        // and undoing AudioImpactMonitor's .record/.measurement configuration.
+        newSession.automaticallyConfiguresApplicationAudioSession = false
 
         // Input
         let input: AVCaptureDeviceInput
@@ -150,11 +146,12 @@ final class CameraCaptureController: NSObject, @unchecked Sendable {
         }
         newSession.addInput(input)
 
-        // Output: 32BGRA frames, always discard late, serial dedicated queue
+        // Output: 420f biplanar — spec §5.3; ~half the memory of 32BGRA at 1080p
+        // 240 fps so the ring buffer no longer starves the capture pool.
         let output = AVCaptureVideoDataOutput()
         output.alwaysDiscardsLateVideoFrames = true
         output.videoSettings = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
         ]
         output.setSampleBufferDelegate(self, queue: frameQueue)
 
@@ -169,9 +166,38 @@ final class CameraCaptureController: NSObject, @unchecked Sendable {
         // Publish session so the Live screen can attach a preview layer
         session = newSession
 
-        // Notify the caller of the effective status before starting
-        onStatusChange?(rec.needsMoreLight ? .needsMoreLight : .running)
+        // Notify the caller that the session is starting (light check follows below)
+        onStatusChange?(.running)
         newSession.startRunning()
+
+        // 5. Meter ISO after AE convergence -----------------------------------
+        // AE needs a brief window (~300 ms) to converge on the scene brightness
+        // after the session starts streaming.  Read the settled ISO/duration then
+        // apply the custom short-shutter exposure so device.iso is representative.
+        try? await Task.sleep(for: .milliseconds(300))
+        do {
+            try device.lockForConfiguration()
+            let meteredISO      = Double(device.iso)
+            let meteredDuration = device.exposureDuration.seconds
+            let rec = ExposureCalculator.recommend(
+                autoISO:        meteredISO,
+                autoDuration:   meteredDuration,
+                targetDuration: config.shutterSeconds,
+                minISO:         Double(bestFormat.minISO),
+                maxISO:         Double(bestFormat.maxISO)
+            )
+            device.setExposureModeCustom(
+                duration: CMTime(seconds: config.shutterSeconds, preferredTimescale: 1_000_000),
+                iso: Float(rec.iso),
+                completionHandler: nil
+            )
+            device.unlockForConfiguration()
+            // Re-publish status with the post-convergence light assessment
+            onStatusChange?(rec.needsMoreLight ? .needsMoreLight : .running)
+        } catch {
+            // Re-lock failed (rare); session is still running with auto exposure.
+            // Caller stays in .running; ISO may be non-optimal for this scene.
+        }
     }
 
     /// Stops the capture session and publishes .idle.

@@ -18,7 +18,8 @@ import Foundation
 /// because this struct is initialised once on the main actor and thereafter
 /// treated as read-only.
 struct ImpactCapture: @unchecked Sendable {
-    /// Audio transient timestamp, seconds (audio engine sample clock).
+    /// Audio transient timestamp, seconds (mach host-time clock, same domain as
+    /// video frame PTS — see AudioImpactMonitor for clock-unification details).
     let impactTime: Double
     /// Frames spanning [impactTime − preRoll, impactTime + postRoll].
     nonisolated(unsafe) let frames: [Timestamped<CVPixelBuffer>]
@@ -219,7 +220,7 @@ final class CaptureCoordinator: ObservableObject {
         // Start audio first; if camera setup fails, stop audio for clean teardown.
         try audio.start()
         do {
-            try camera.start()
+            try await camera.start()
         } catch {
             audio.stop()
             throw error
@@ -259,41 +260,52 @@ final class CaptureCoordinator: ObservableObject {
         }
         // Phase 0: fall through without any departure-time check.
 
-        // ── Ring-buffer snapshot ──────────────────────────────────────────────
-        // `snapshot()` acquires the NSLock briefly; the lock is not held across
-        // the ImpactWindow.slice or any subsequent processing.
-        let allFrames = lockedBuffer.snapshot()
-        let window = ImpactWindow.slice(
-            allFrames,
-            impactTime: impactTime,
-            preRoll: config.preRollSeconds,
-            postRoll: config.postRollSeconds
-        )
-
-        let capture = ImpactCapture(impactTime: impactTime, frames: window)
-
-        // ── Publish to caller ─────────────────────────────────────────────────
-        onImpactCapture(capture)
-
-        // ── Optional clip write ───────────────────────────────────────────────
-        // CVPixelBuffer is not `Sendable` in iOS 26's Swift overlay, so
-        // `[Timestamped<CVPixelBuffer>]` cannot safely cross into a
-        // `Task.detached` region under Swift 6 strict concurrency.
-        //
-        // Phase 0 workaround: use `Task { }` (inherits @MainActor context).
-        // The `write` call is `nonisolated async`, so it suspends cooperatively
-        // via `await writer.finishWriting()` — the main thread is NOT blocked;
-        // AVAssetWriter performs encoding on its own internal queues.
-        //
-        // TODO (Phase 1): once CVPixelBuffer gains a Sendable conformance (or
-        // Timestamped is retrofitted), switch to `Task.detached(priority: .utility)`
-        // to truly move clip encoding off the main actor's executor.
-        guard !capture.frames.isEmpty else { return }
-        let fps    = config.targetFPS
+        // ── Deferred ring-buffer snapshot ─────────────────────────────────────
+        // Snapshotting synchronously on the audio callback would miss the +postRoll
+        // frames (they haven't been buffered yet).  Defer the snapshot by
+        // postRollSeconds + a small margin so those future frames arrive first.
+        let postRollDelay = config.postRollSeconds + 0.02   // extra 20 ms margin
+        let cfg    = config
+        let lb     = lockedBuffer
         let writer = clipWriter
-        let url    = writer.makeClipURL()
-        Task(priority: .utility) { @MainActor in
-            try? await writer.write(frames: capture.frames, fps: fps, to: url)
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(postRollDelay))
+            guard self.isArmed else { return }
+
+            // `snapshot()` acquires the NSLock briefly; the lock is not held
+            // across ImpactWindow.slice or any subsequent processing.
+            let allFrames = lb.snapshot()
+            let window = ImpactWindow.slice(
+                allFrames,
+                impactTime: impactTime,
+                preRoll: cfg.preRollSeconds,
+                postRoll: cfg.postRollSeconds
+            )
+
+            let capture = ImpactCapture(impactTime: impactTime, frames: window)
+
+            // ── Publish to caller ─────────────────────────────────────────────
+            self.onImpactCapture(capture)
+
+            // ── Optional clip write ───────────────────────────────────────────
+            // CVPixelBuffer is not `Sendable` in iOS 26's Swift overlay, so
+            // `[Timestamped<CVPixelBuffer>]` cannot safely cross into a
+            // `Task.detached` region under Swift 6 strict concurrency.
+            //
+            // Phase 0 workaround: use `Task { }` (inherits @MainActor context).
+            // The `write` call is `nonisolated async`, so it suspends cooperatively
+            // via `await writer.finishWriting()` — the main thread is NOT blocked;
+            // AVAssetWriter performs encoding on its own internal queues.
+            //
+            // TODO (Phase 1): once CVPixelBuffer gains a Sendable conformance (or
+            // Timestamped is retrofitted), switch to `Task.detached(priority: .utility)`
+            // to truly move clip encoding off the main actor's executor.
+            guard !capture.frames.isEmpty else { return }
+            let fps = cfg.targetFPS
+            let url = writer.makeClipURL()
+            Task(priority: .utility) { @MainActor in
+                try? await writer.write(frames: capture.frames, fps: fps, to: url)
+            }
         }
     }
 }

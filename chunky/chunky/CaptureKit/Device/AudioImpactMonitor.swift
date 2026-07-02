@@ -102,11 +102,18 @@ final class AudioImpactMonitor: @unchecked Sendable {
 
     /// Called on the internal AVAudioEngine render thread.
     private func processTap(buffer: AVAudioPCMBuffer, time: AVAudioTime) {
-        // Derive a monotonically increasing timestamp in seconds from the
-        // buffer's sample position.  Falls back to host time if sampleTime
-        // is not valid (unusual but guarded).
+        // Derive a timestamp in seconds in the mach host-time clock domain so
+        // it matches video frame PTS from CMSampleBufferGetPresentationTimeStamp.
+        // AVCaptureSession's default synchronization clock is the host-time clock,
+        // so audio impact time and video frame PTS are now both in mach
+        // host-time-clock seconds domain and the impact window aligns correctly.
         let t: Double
-        if time.isSampleTimeValid, time.sampleRate > 0 {
+        if time.isHostTimeValid {
+            t = AVAudioTime.seconds(forHostTime: time.hostTime)
+        } else if time.isSampleTimeValid, time.sampleRate > 0 {
+            // sampleTime/sampleRate fallback (~0 origin, not aligned to the mach
+            // host-time clock) — may introduce a time-domain discontinuity
+            // relative to sampleTime-derived timestamps.
             t = Double(time.sampleTime) / time.sampleRate
         } else {
             // CACurrentMediaTime() is host-clock based and not aligned to the
