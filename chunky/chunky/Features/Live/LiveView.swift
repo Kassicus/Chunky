@@ -299,7 +299,10 @@ struct LiveView: View {
     // Arm / Disarm button
     private var armDisarmButton: some View {
         let armed = controller.status == .running
-        let cannotArm = !controller.canArm && controller.status == .idle
+        // Disarm is always available while running. Arming is blocked from any
+        // non-running state unless a club AND calibration are set (canArm) — so
+        // .unauthorized/.needsMoreLight/.failed with no club/calibration cannot arm.
+        let cannotArm = !armed && !controller.canArm
 
         return Button {
             if armed {
