@@ -113,13 +113,21 @@ final class DeviceAttitude {
     private(set) var imagePlaneGravity: Vec2?
 
     /// CoreMotion update rate in seconds per sample. Default: 1/60 s (60 Hz).
-    /// Must be set before calling `start()`; ignored if motion updates are
-    /// already running.
+    /// Takes effect on the next `start()` call; if the stream is already
+    /// running, call `start()` again to re-apply it (the stream is restarted
+    /// so the new interval is honored).
     var updateInterval: TimeInterval = 1.0 / 60.0
 
     // MARK: - Private state
 
     private let motionManager = CMMotionManager()
+
+    /// Tracks whether `beginGeneratingDeviceOrientationNotifications()` is
+    /// currently active. UIKit reference-counts begin/end calls, so we must
+    /// issue exactly one `end` per `begin`; this flag keeps repeated `start()`
+    /// calls from stacking begins (and keeps `stop()` from issuing an unmatched
+    /// `end` when `start()` was a no-op on the simulator).
+    private var isOrientationNotificationsActive = false
 
     // MARK: - Lifecycle
 
@@ -131,8 +139,12 @@ final class DeviceAttitude {
     func start() {
         guard motionManager.isDeviceMotionAvailable else { return }
         // Enable UIDevice orientation so projectToImagePlane can distinguish
-        // landscape-right from landscape-left.
-        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+        // landscape-right from landscape-left. Guard against stacking begins
+        // if start() is called more than once without an intervening stop().
+        if !isOrientationNotificationsActive {
+            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+            isOrientationNotificationsActive = true
+        }
         // Stop any existing stream before applying the new interval.
         motionManager.stopDeviceMotionUpdates()
         motionManager.deviceMotionUpdateInterval = updateInterval
@@ -152,7 +164,12 @@ final class DeviceAttitude {
     /// Stops the device-motion stream and clears the cached vectors.
     func stop() {
         motionManager.stopDeviceMotionUpdates()
-        UIDevice.current.endGeneratingDeviceOrientationNotifications()
+        // Only end orientation notifications if we actually began them, so the
+        // begin/end reference count stays balanced.
+        if isOrientationNotificationsActive {
+            UIDevice.current.endGeneratingDeviceOrientationNotifications()
+            isOrientationNotificationsActive = false
+        }
         gravity = nil
         imagePlaneGravity = nil
     }
