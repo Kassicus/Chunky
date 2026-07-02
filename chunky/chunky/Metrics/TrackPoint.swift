@@ -15,3 +15,5 @@ nonisolated struct TrackPoint: Equatable {
         self.confidence = confidence
     }
 }
+
+extension TrackPoint: Codable {}
