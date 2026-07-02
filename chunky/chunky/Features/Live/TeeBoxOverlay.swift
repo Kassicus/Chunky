@@ -77,6 +77,7 @@ struct TeeBoxOverlay: View {
     private func moveDragGesture(size: CGSize) -> some Gesture {
         DragGesture()
             .onChanged { value in
+                guard size.width > 0, size.height > 0 else { return }
                 if moveDragStart == nil { moveDragStart = roi }
                 guard let start = moveDragStart else { return }
                 let dx = value.translation.width / size.width
@@ -93,6 +94,7 @@ struct TeeBoxOverlay: View {
     private func resizeDragGesture(size: CGSize) -> some Gesture {
         DragGesture()
             .onChanged { value in
+                guard size.width > 0, size.height > 0 else { return }
                 if resizeDragStart == nil { resizeDragStart = roi }
                 guard let start = resizeDragStart else { return }
                 let dw = value.translation.width / size.width

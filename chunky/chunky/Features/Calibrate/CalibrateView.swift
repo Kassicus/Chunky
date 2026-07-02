@@ -206,7 +206,7 @@ struct CalibrateView: View {
                 .foregroundStyle(Theme.mist)
                 .multilineTextAlignment(.center)
 
-            Button("Re-detect") {
+            Button(mode == .marker ? "Re-detect" : "Re-measure") {
                 withAnimation { resetState() }
             }
             .font(Theme.eyebrow)

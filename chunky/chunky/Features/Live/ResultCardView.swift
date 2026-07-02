@@ -90,7 +90,7 @@ struct ResultCardView: View {
             rowDivider
             metricRow(
                 label: "Spin",
-                value: "\(Int(result.spinRPM)) rpm",
+                value: "\(Int(result.spinRPM.rounded())) rpm",
                 unit: "",
                 badge: result.spinSource.rawValue
             )

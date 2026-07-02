@@ -187,6 +187,7 @@ struct LiveView: View {
                 onDelete: {
                     if let s = controller.latestShot {
                         store?.deleteShots([s])
+                        controller.clearLatest()
                     }
                 }
             )
@@ -308,9 +309,13 @@ struct LiveView: View {
             if armed {
                 controller.disarm()
             } else {
-                createSessionIfNeeded()
-                setTeeBoxROI()
-                Task { await controller.arm() }
+                Task {
+                    await controller.arm()
+                    if controller.status == .running {
+                        createSessionIfNeeded()
+                        setTeeBoxROI()
+                    }
+                }
             }
         } label: {
             Text(armed ? "Disarm" : "Arm")

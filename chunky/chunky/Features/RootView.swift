@@ -4,7 +4,6 @@ import SwiftData
 
 struct RootView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(AppSettings.self) private var appSettings
     @State private var live = LiveSessionController()
 
     var body: some View {

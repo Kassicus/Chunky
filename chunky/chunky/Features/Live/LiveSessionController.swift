@@ -1,5 +1,6 @@
 // chunky/chunky/Features/Live/LiveSessionController.swift
 import AVFoundation
+import Combine
 import CoreVideo
 import Foundation
 import Observation
@@ -21,6 +22,7 @@ final class LiveSessionController {
     private let coordinator: CaptureCoordinator
     private let pipeline = ShotPipeline()
     private let vision = VisionPipeline()
+    private var statusCancellable: AnyCancellable? = nil
 
     // MARK: - State
 
@@ -39,6 +41,13 @@ final class LiveSessionController {
 
     init(coordinator: CaptureCoordinator = CaptureCoordinator()) {
         self.coordinator = coordinator
+        previewSession = coordinator.previewSession
+        currentLens = coordinator.currentLens
+        statusCancellable = coordinator.$status
+            .receive(on: RunLoop.main)
+            .sink { [weak self] newStatus in
+                self?.status = newStatus
+            }
     }
 
     // MARK: - Injection
@@ -50,8 +59,8 @@ final class LiveSessionController {
 
     // MARK: - Passthrough
 
-    var previewSession: AVCaptureSession { coordinator.previewSession }
-    var currentLens: CaptureConfiguration.Lens { coordinator.currentLens }
+    private(set) var previewSession: AVCaptureSession
+    private(set) var currentLens: CaptureConfiguration.Lens
 
     // MARK: - Gate
 
@@ -98,7 +107,6 @@ final class LiveSessionController {
             status = .failed("\(error)")
             return
         }
-        status = coordinator.status
     }
 
     func disarm() {
@@ -106,11 +114,21 @@ final class LiveSessionController {
         status = .idle
     }
 
+    // MARK: - Clear latest result
+
+    func clearLatest() {
+        latestResult = nil
+        latestShot = nil
+        latestTrackJSON = nil
+    }
+
     // MARK: - Lens toggle
 
     func toggleLens() async {
         let next: CaptureConfiguration.Lens = coordinator.currentLens == .telephoto ? .wide : .telephoto
         try? await coordinator.setLens(next)
+        previewSession = coordinator.previewSession
+        currentLens = coordinator.currentLens
         settings?.lens = next == .telephoto ? .telephoto : .wide
     }
 
