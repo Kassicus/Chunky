@@ -5,7 +5,8 @@
 // ## Marker strategy
 // Primary:  `VNDetectBarcodesRequest` with `.qr` symbology — the printed
 //           calibration target is a QR code of known physical size.  Vision
-//           returns an axis-aligned bounding box; 4 corners are derived from it.
+//           returns perspective-correct quad corners via the inherited
+//           `VNRectangleObservation` properties on `VNBarcodeObservation`.
 // Fallback: `VNDetectRectanglesRequest` — for a plain rectangular target when
 //           no QR code is found.
 //
@@ -82,19 +83,20 @@ final class MarkerDetector {
 
     // MARK: - Private helpers
 
-    /// Performs the QR-code request and derives 4 axis-aligned corners from the
-    /// bounding box of the highest-confidence observation.
+    /// Performs the QR-code request and returns 4 perspective-correct corners
+    /// from the highest-confidence observation.
     ///
-    /// **SDK note:** `VNBarcodeObservation` does not expose perspective-correct
-    /// quad-corner points in the public API — those properties live on
-    /// `VNRectangleObservation`.  We derive corners from the axis-aligned
-    /// `boundingBox` instead.  For flat, frontal calibration-marker QR codes
-    /// this is a valid approximation; a perspective-correct quad would require
-    /// the private `corners` property or a custom barcode decoder.
+    /// `VNBarcodeObservation` inherits from `VNRectangleObservation`, so the
+    /// named quad-corner properties (`topLeft`, `topRight`, `bottomRight`,
+    /// `bottomLeft`) are available directly on the observation.  These describe
+    /// the actual marker quad — not an axis-aligned bounding box — so they
+    /// remain accurate for tilted markers.
     ///
-    /// Vision BL-origin → [TL, TR, BR, BL] mapping:
-    ///   - top-left  = (minX, maxY)   top-right  = (maxX, maxY)
-    ///   - bot-right = (maxX, minY)   bot-left   = (minX, minY)
+    /// Values are in Vision's normalised BL-origin coordinate space; the
+    /// standard `(1 − ny) × height` flip converts them to top-left-origin
+    /// pixel coordinates, matching the rectangle-path convention.
+    ///
+    /// Returns `nil` if no observation is found.
     private static func barcodeCorners(
         _ request: VNDetectBarcodesRequest,
         handler: VNImageRequestHandler,
@@ -103,12 +105,11 @@ final class MarkerDetector {
         do { try handler.perform([request]) } catch { return nil }
         guard let obs = request.results?.first else { return nil }
 
-        let box = obs.boundingBox
         let norm: [(Double, Double)] = [
-            (Double(box.minX), Double(box.maxY)),   // TL (Vision BL-origin)
-            (Double(box.maxX), Double(box.maxY)),   // TR
-            (Double(box.maxX), Double(box.minY)),   // BR
-            (Double(box.minX), Double(box.minY)),   // BL
+            (Double(obs.topLeft.x),     Double(obs.topLeft.y)),
+            (Double(obs.topRight.x),    Double(obs.topRight.y)),
+            (Double(obs.bottomRight.x), Double(obs.bottomRight.y)),
+            (Double(obs.bottomLeft.x),  Double(obs.bottomLeft.y)),
         ]
         return norm.map { nx, ny in Vec2(nx * w, (1.0 - ny) * h) }
     }
